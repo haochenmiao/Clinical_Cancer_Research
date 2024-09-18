@@ -121,12 +121,12 @@ To run the Shiny app, follow these steps:
 ```runApp("path/to/your/app/folder")```
 The app will launch in your browser.
 
-Screenshots
-Clinical Data Tab
+## Screenshots
+### Clinical Data Tab
 ![clinical_screenshot](screenshots/clinical_screenshot.png)
 
-Biospecimen Data Tab
+### Biospecimen Data Tab
 ![biospecimen_screenshot](screenshots/biospecimen_screenshot.png)
 
-Contributing
+## Contributing
 Contributions are welcome! Please open an issue or submit a pull request with your changes. Make sure to include a detailed description of the changes you have made.
