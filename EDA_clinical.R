@@ -8,7 +8,7 @@ library(ggplot2)
 library(ggmosaic)
 
 # Set working directory
-setwd("/Users/haochenmiao/Documents/Data_Sciecne_Projects/R_clinical_cancer")
+setwd("/Users/haochenmiao/Documents/Data_Sciecne_Projects/Clinical_Cancer_Research")
 
 # Load JSON data
 json_data_clinical <- fromJSON("FM-AD Clinical Project 2024-09-07.json")

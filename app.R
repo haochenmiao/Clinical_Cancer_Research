@@ -8,6 +8,9 @@ library(DT)
 library(shinydashboard)
 library(treemap)
 library(lubridate)
+library(plotly)  # For interactive plots
+library(highcharter)  # Advanced visualizations
+library(dygraphs)  # For time series
 
 # Load JSON data for clinical and biospecimen datasets
 json_data_clinical <- fromJSON("FM-AD Clinical Project 2024-09-07.json")
@@ -70,15 +73,15 @@ ui <- dashboardPage(
         tabName = "clinical",
         fluidRow(
           box(title = "Distribution of Tumor Types", status = "primary", width = 6,
-              plotOutput("tumor_distribution")),
+              plotlyOutput("tumor_distribution")),
           box(title = "Age at Diagnosis by Gender", status = "primary", width = 6,
-              plotOutput("age_diagnosis_gender"))
+              plotlyOutput("age_diagnosis_gender"))
         ),
         fluidRow(
           box(title = "Distribution of Tumor Types by Gender", status = "primary", width = 6,
-              plotOutput("tumor_gender")),
-          box(title = "Ethnicity Distribution", status = "primary", width = 6,
-              plotOutput("ethnicity_distribution"))
+              plotlyOutput("tumor_gender")),
+          box(title = "Age at Diagnosis by Tumor Classification", status = "primary", width = 6,
+              plotlyOutput("age_histogram_classification"))
         ),
         fluidRow(
           box(title = "Data Table - Clinical", status = "primary", width = 12,
@@ -90,15 +93,15 @@ ui <- dashboardPage(
         tabName = "biospecimen",
         fluidRow(
           box(title = "Distribution of Tumor Descriptors", status = "primary", width = 6,
-              plotOutput("tumor_descriptor")),
-          box(title = "Tissue Type Distribution", status = "primary", width = 6,
-              plotOutput("tissue_distribution"))
+              plotlyOutput("tumor_descriptor")),
+          box(title = "Percent Tumor Nuclei by Sample Type", status = "primary", width = 6,
+              plotlyOutput("tumor_nuclei_violin"))
         ),
         fluidRow(
           box(title = "Percent Tumor Nuclei by Tumor Descriptor", status = "primary", width = 6,
-              plotOutput("tumor_nuclei_descriptor")),
+              plotlyOutput("tumor_nuclei_descriptor")),
           box(title = "Density of Percent Tumor Nuclei", status = "primary", width = 6,
-              plotOutput("density_tumor_nuclei"))
+              plotlyOutput("density_tumor_nuclei"))
         ),
         fluidRow(
           box(title = "Data Table - Biospecimen", status = "primary", width = 12,
@@ -112,32 +115,41 @@ ui <- dashboardPage(
 # Define server logic
 server <- function(input, output) {
   # Clinical Plots
-  output$tumor_distribution <- renderPlot({
-    ggplot(clinical_data_clean, aes(x = primary_diagnosis)) +
+  output$tumor_distribution <- renderPlotly({
+    p <- ggplot(clinical_data_clean, aes(x = primary_diagnosis)) +
       geom_bar(fill = "skyblue") +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       labs(title = "Distribution of Tumor Types", x = "Primary Diagnosis", y = "Count")
+    ggplotly(p)
   })
   
-  output$age_diagnosis_gender <- renderPlot({
-    ggplot(clinical_data_clean, aes(x = gender, y = age_at_diagnosis_years)) +
+  output$age_diagnosis_gender <- renderPlotly({
+    p <- ggplot(clinical_data_clean, aes(x = gender, y = age_at_diagnosis_years)) +
       geom_boxplot(fill = "coral") +
       labs(title = "Age at Diagnosis by Gender", x = "Gender", y = "Age at Diagnosis (Years)")
+    ggplotly(p)
   })
   
-  output$tumor_gender <- renderPlot({
-    ggplot(clinical_data_clean, aes(x = primary_diagnosis, fill = gender)) +
+  output$tumor_gender <- renderPlotly({
+    p <- ggplot(clinical_data_clean, aes(x = primary_diagnosis, fill = gender)) +
       geom_bar(position = "stack") +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       labs(title = "Distribution of Tumor Types by Gender", x = "Primary Diagnosis", y = "Count")
+    ggplotly(p)
   })
   
-  output$ethnicity_distribution <- renderPlot({
-    ggplot(ethnicity_counts, aes(x = "", y = count, fill = ethnicity)) +
-      geom_col(width = 1) +
-      coord_polar(theta = "y") +
-      labs(title = "Ethnicity Distribution", x = NULL, y = NULL) +
-      theme_void()
+  output$age_histogram_classification <- renderPlotly({
+    p <- ggplot(clinical_data_clean, aes(x = age_at_diagnosis_years, fill = classification_of_tumor)) +
+      geom_histogram(binwidth = 5, color = "black", position = "dodge") +
+      labs(
+        title = "Age at Diagnosis by Tumor Classification",
+        x = "Age at Diagnosis (Years)",
+        y = "Number of Patients"
+      ) +
+      scale_fill_brewer(palette = "Set1") +
+      theme_minimal()
+    
+    ggplotly(p)
   })
   
   output$clinical_data_table <- renderDataTable({
@@ -145,37 +157,42 @@ server <- function(input, output) {
   })
   
   # Biospecimen Plots
-  output$tumor_descriptor <- renderPlot({
-    ggplot(biospecimen_clean, aes(x = samples_tumor_descriptor)) +
+  output$tumor_descriptor <- renderPlotly({
+    p <- ggplot(biospecimen_clean, aes(x = samples_tumor_descriptor)) +
       geom_bar(fill = "lightblue", color = "black") +
       labs(title = "Distribution of Tumor Descriptors", x = "Tumor Descriptor", y = "Count") +
       theme_minimal()
+    ggplotly(p)
   })
   
-  output$tissue_distribution <- renderPlot({
-    tissue_type_counts <- biospecimen_clean %>%
-      count(samples_tissue_type) %>%
-      arrange(desc(n))
+  output$tumor_nuclei_violin <- renderPlotly({
+    p <- ggplot(biospecimen_clean, aes(x = samples_sample_type, y = samples_portions_slides_percent_tumor_nuclei, fill = samples_sample_type)) +
+      geom_violin(trim = FALSE) +
+      labs(
+        title = "Percent Tumor Nuclei by Sample Type",
+        x = "Sample Type",
+        y = "Percent Tumor Nuclei"
+      ) +
+      theme_minimal() +
+      theme(legend.position = "none")
     
-    ggplot(tissue_type_counts, aes(x = "", y = n, fill = samples_tissue_type)) +
-      geom_col(width = 1) +
-      coord_polar(theta = "y") +
-      labs(title = "Tissue Type Distribution", fill = "Tissue Type") +
-      theme_void()
+    ggplotly(p)
   })
   
-  output$tumor_nuclei_descriptor <- renderPlot({
-    ggplot(biospecimen_clean, aes(x = samples_tumor_descriptor, y = samples_portions_slides_percent_tumor_nuclei)) +
+  output$tumor_nuclei_descriptor <- renderPlotly({
+    p <- ggplot(biospecimen_clean, aes(x = samples_tumor_descriptor, y = samples_portions_slides_percent_tumor_nuclei)) +
       geom_boxplot(fill = "tomato") +
       labs(title = "Percent Tumor Nuclei by Tumor Descriptor", x = "Tumor Descriptor", y = "Percent Tumor Nuclei") +
       theme_minimal()
+    ggplotly(p)
   })
   
-  output$density_tumor_nuclei <- renderPlot({
-    ggplot(biospecimen_clean, aes(x = samples_portions_slides_percent_tumor_nuclei)) +
+  output$density_tumor_nuclei <- renderPlotly({
+    p <- ggplot(biospecimen_clean, aes(x = samples_portions_slides_percent_tumor_nuclei)) +
       geom_density(fill = "lightgreen") +
       labs(title = "Density of Percent Tumor Nuclei", x = "Percent Tumor Nuclei", y = "Density") +
       theme_minimal()
+    ggplotly(p)
   })
   
   output$biospecimen_data_table <- renderDataTable({
